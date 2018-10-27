@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import requests
 import json
-import geoplotlib
+#import geoplotlib
 import csv
 import math
 incidents = pd.read_csv('incidents_2015-2018.csv')
@@ -17,7 +17,6 @@ def geoCode(filename, output):
     ''' 
     num_requests = 100
     inc = pd.read_csv(filename)
-    inc = inc[:205] #TODO: remove limit data later
     with open('api_keys.json') as f:
         api_keys = json.load(f)
     params = {
@@ -85,7 +84,7 @@ def plot_points(dataset):
     crimes = geoplotlib.utils.read_json(dataset)
     geoplotlib.dot(crimes)
     geoplotlib.show()
-#clean_locations('incidents_2015-2018.csv', 'clean_incidents.csv')
+clean_locations('incidents_2015-2018.csv', 'clean_incidents.csv')
 geoCode('clean_incidents.csv', 'inc_latlng.csv')
 #plotPoints(geoCode())
 
