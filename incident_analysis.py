@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-#import matplotlib.pyplot as plt
 import requests
 import json
 #import geoplotlib
@@ -16,7 +15,14 @@ def geoCode(filename, output):
     @return: None
     ''' 
     num_requests = 100
+
+    exist_lines = count_lines(output)
+    if exist_lines != 0:
+        print("Found existing coords, starting at: " + str(exist_lines))
+
     inc = pd.read_csv(filename)
+    inc = inc[exist_lines:]
+     
     with open('api_keys.json') as f:
         api_keys = json.load(f)
     params = {
@@ -28,34 +34,46 @@ def geoCode(filename, output):
         location = []
         for i in range(num_requests):
             try:
-                location.append(inc['Mapping Address'][i + batch * num_requests])
+                # Have to add exist_lines cause it keeps original index numbers
+                location.append(inc['Mapping Address'][i + batch * num_requests + exist_lines])
             except KeyError: # Used in last batch if not perfectly divisible by 100
                 break
         params['location'] = location
         r = requests.get('http://mapquestapi.com/geocoding/v1/batch', params=params)
         if r.status_code == 200:
-            results = [r.json()['results'][i]['locations'][0]['latLng'] for i in range(len(r.json()['results']))]
-            csv_write(output, results, batch * num_requests + 1)
+            for i, result in enumerate(r.json()['results']):
+                csv_write(output, result['locations'][0]['latLng'], batch * num_requests + i + 1)
         else:
             print("Error: " + str(r.status_code))
+            break
 
+def count_lines(filename):
+    '''
+    Counts the number of rows in a file
+    @param filename: the file to count
+    @return int with number of rows
+    '''
+    with open(filename) as f:
+        lines = 0
+        for i in enumerate(f):
+            lines += 1
+        return lines
 
-def csv_write(filename, data, index):
+def csv_write(filename, latlng, index):
     '''
     Writes to filename using headers from list in dicts.
     @param filename: the filename to write to
-    @param data: the data to write to the rows
+    @param latlng: the lat and long to write, stored in a dictionary
     @param index: the index to write data passed in
     @return: None
     '''
     with open(filename, mode='a') as crime_file:
-        fieldnames = [key for key in data[0].keys()]
+        fieldnames = [key for key in latlng.keys()]
         crime_writer = csv.DictWriter(crime_file, fieldnames)
-        if index == 1: # Writes header the initial time
+        if index == 1 and count_lines(filename) == 0: # Writes header the initial time
+            print("Writing header")
             crime_writer.writeheader()
-        print("Length: " + str(len(data)))
-        for point in data:
-            crime_writer.writerow(dict(point))
+        crime_writer.writerow(dict(latlng))
 
 def clean_locations(filename, writeto):
     '''
@@ -84,7 +102,7 @@ def plot_points(dataset):
     crimes = geoplotlib.utils.read_json(dataset)
     geoplotlib.dot(crimes)
     geoplotlib.show()
-clean_locations('incidents_2015-2018.csv', 'clean_incidents.csv')
-geoCode('clean_incidents.csv', 'inc_latlng.csv')
+#clean_locations('incidents_2015-2018.csv', 'clean_incidents.csv')
+geoCode('clean_incidents.csv', 'test_latlng.csv')
 #plotPoints(geoCode())
 
